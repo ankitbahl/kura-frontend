@@ -5,7 +5,9 @@ import Modal from 'react-modal';
 import _ from 'lodash';
 import moment from 'moment';
 import { ContextMenu, MenuItem, ContextMenuTrigger } from "react-contextmenu";
-import {uploadFile, getDirectoryKeys, deleteFile, deleteFolder, getFile, getMetadata, createFolder, renameFile} from '../proto/MetadataFunctions';
+import {uploadURL, getDirectoryKeys, getFile} from '../proto/MetadataFunctions';
+import Login from "./Login";
+import {getCookie} from "../proto/cookieFunctions";
 const customStyles = {
   content : {
     top                   : '50%',
@@ -22,7 +24,7 @@ class Main extends React.Component {
     super(props);
     this.state = {
       directory: {},
-      root: this.props.match.params['path'] || 'kura-root',
+      root: this.props.match.params['path'] || 'root',
       favourites: [],
       sortCategory: 'lastModified',
       sortOrder: -1, //1 or -1 == asc or desc
@@ -33,7 +35,8 @@ class Main extends React.Component {
       searchFilter: '',
       modalContent: '', //rename or delete
       modalSelect: '',
-      fileSelected: true
+      fileSelected: true,
+      auth: getCookie('auth')
     };
     this.openModal = this.openModal.bind(this);
     this.afterOpenModal = this.afterOpenModal.bind(this);
@@ -44,13 +47,19 @@ class Main extends React.Component {
     this.poll();
   }
 
+  login() {
+    this.setState({auth: getCookie('auth')})
+  }
+
   poll = () => {
-    getDirectoryKeys(this.state.root,
-      (keysList) => {
-        this.setState(
-          {directory: this.parseStructure(keysList)})
-      }
-    );
+    if (this.state.auth !== null && this.state.auth !== '') {
+        getDirectoryKeys(this.state.root, this.state.auth,
+            (keysList) => {
+                this.setState(
+                    {directory: this.parseStructure(keysList)})
+            }
+        );
+    }
 
     setTimeout(this.poll, 1000);
   };
@@ -111,7 +120,7 @@ class Main extends React.Component {
   parseStructure = (entriesList) => {
     let struct = Object.assign({}, this.state.directory);
     for(let entry of entriesList) {
-      const file = entry.path;
+        const file = entry.path;
       let path = file.split('/');
       let current = struct;
       for (let key of path) {
@@ -129,13 +138,11 @@ class Main extends React.Component {
     for(let entry of entriesList) {
       if (!entry.isDirectory) {
         const file = entry.path;
-        getMetadata(file, (obj) => {
-          this.setDirectory(file, {
-              lastModified: obj.metadata.lastModified.seconds,
-              size: obj.metadata.size
-            }
-          )
-        });
+        this.setDirectory(file, {
+            lastModified: entry.lastModified,
+            size: entry.size
+          }
+        )
       }
     }
 
@@ -155,37 +162,11 @@ class Main extends React.Component {
     return struct;
   };
 
-  updateStructure = (filepath, option, params) => {
-    switch(option) {
-      case "create":
-        this.setDirectory(filepath, {lastModified: 0, size: 0});
-        getMetadata(filepath, (obj) => {
-
-          this.setDirectory(filepath, {
-            lastModified: obj.metadata.lastModified.seconds,
-            size: obj.metadata.size
-          })
-        });
-        break;
-      case "delete":
-        this.unsetDirectory(filepath);
-        break;
-      case "folder":
-        this.setDirectory(filepath, {});
-        break;
-      case "rename":
-        this.renameKey(filepath, params.newPath);
-        break;
-      default:
-        // do nothing
-    }
-  };
-
   folderClick = (obj) => {
     const root = `${this.state.root}/${obj}`;
     this.setState({root});
 
-    getDirectoryKeys(root,
+    getDirectoryKeys(root, this.state.auth,
       (keysList) => {
       this.setState(
         {directory: this.parseStructure(keysList)})
@@ -203,26 +184,25 @@ class Main extends React.Component {
 
   downloadFile = (fileName) => {
     let filepath = this.state.root === '' ? fileName : `${this.state.root}/${fileName}`;
-    getFile(filepath, (bytes) => {
-      let blob = new Blob([bytes]);
-      let link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      link.download = fileName;
-      link.click();
-    });
+    console.log(filepath);
+    let fileURI = getFile(filepath, this.state.auth);
+    let link = document.createElement('a');
+    link.href = fileURI;
+    link.download = fileName;
+    link.click();
   };
 
-  uploadFiles = (files) => {
-    let file = files.target.files[0];
-    let path = this.state.root === '' ? file.name : `${this.state.root}/${file.name}`;
-    uploadFile(file, path,
-      (fileName) => this.updateStructure(fileName, "create"),
-      (data) => {
-        if(data.lengthComputable) {
-          this.setState({progress: data.loaded * 100 / data.total});
-        }
-      }
-    );
+  uploadFiles = () => {
+    // let file = files.target.files[0];
+    // let path = this.state.root === '' ? file.name : `${this.state.root}/${file.name}`;
+    // uploadURL(file, path,
+    //   (fileName) => this.updateStructure(fileName, "create"),
+    //   (data) => {
+    //     if(data.lengthComputable) {
+    //       this.setState({progress: data.loaded * 100 / data.total});
+    //     }
+    //   }
+    // );
   };
 
   //TODO add arrow for sort
@@ -235,6 +215,7 @@ class Main extends React.Component {
               <th id="name" scope="col" className="name">Name</th>
               <th id="size" scope="col" className="size">Size</th>
               <th id="lastModified" scope="col" className="lastModified">Last Modified</th>
+              <th id="download" scope="col" className="download"></th>
             </tr>
           </thead>
           <tbody>
@@ -278,7 +259,8 @@ class Main extends React.Component {
           className={`block ${isFile ? "" : " folder"} ${selected ? 'selected' : ''}`}
           key={obj}
           id={obj}>
-          <td>
+          <td className="fileblock">
+            {isFile ? <span className="glyphicon glyphicon-cloud-download" onClick={() => {this.downloadFile(obj)}}></span>: ""}
             <ContextMenuTrigger id={obj}>
               {`${obj}${isFile ? '' : '/'}`}
             </ContextMenuTrigger>
@@ -373,8 +355,8 @@ class Main extends React.Component {
         rootObject = rootObject[dir];
       })
     }
-    const fileOptions = ["Download", "Delete", "Rename", "New Folder"];
-    const folderOptions = ["Delete", "Rename", "New Folder"];
+    const fileOptions = ["Download"];
+    const folderOptions = [];
     return Object.keys(rootObject).filter(name => name!=='favourites').map(name => {
       const isFile = rootObject[name].hasOwnProperty('size');
       let options = isFile ? fileOptions : folderOptions;
@@ -399,8 +381,12 @@ class Main extends React.Component {
               <div className="kura">Kura</div>
             </a>
             <input className="form-control form-control-dark" type="text" placeholder="Search" aria-label="Search" onChange={this.onSearchText}/>
-            {this.state.root === 'kura-root' ? null : (<button className="navbar-btn" onClick={this.goBack}>Back</button>)}
-            <input type="file" id="files" className="hidden" onChange={(files) => this.uploadFiles(files)}/>
+            {this.state.root === 'root' ? null : (<button className="navbar-btn" onClick={this.goBack}>Back</button>)}
+            <form action={uploadURL(this.state.root, this.state.auth)} method="POST"
+                  encType="multipart/form-data" >
+                <input className="hidden" type="file" name="file" id="files" onChange={()=>{document.getElementById('submit').click()}}/>
+                <input className="hidden" type="submit" id="submit" />
+            </form>
             <label htmlFor="files">Upload</label>
             {/*<div className="test">{this.state.progress}</div>*/}
           </div>
@@ -511,34 +497,20 @@ class Main extends React.Component {
       text = textBox.value;
     }
     this.setState({modalIsOpen: false});
-    switch (this.state.modalContent) {
-      case 'folder':
-        const path = `${this.state.root}/${text}`;
-        createFolder(path, () =>{
-          this.updateStructure(path, 'folder');
-        });
-        break;
-      case 'rename':
-        renameFile(this.state.modalSelect, text, (obj)=>{this.updateStructure(this.state.modalSelect, 'rename', {newPath: text})});
-        break;
-      case 'delete':
-        if (this.state.fileSelected) {
-          deleteFile(this.state.modalSelect, (file) => this.updateStructure(file, 'delete'));
-        } else {
-          deleteFolder(this.state.modalSelect, (file) => this.updateStructure(file, 'delete'));
-        }
-        break;
-    }
   };
 
   render() {
-    return (<div>
-      {this.topbar()}
-      {/*{this.sidebar()}*/}
-      {this.filetable()}
-      {this.menus()}
-      {this.modal()}
-    </div>);
+    if (this.state.auth !== null && this.state.auth !== '') {
+        return (<div>
+            {this.topbar()}
+            {/*{this.sidebar()}*/}
+            {this.filetable()}
+            {this.menus()}
+            {this.modal()}
+        </div>);
+    } else {
+      return <Login loginCallback={() => this.login()}/>
+    }
   }
 }
 

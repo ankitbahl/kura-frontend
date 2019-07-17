@@ -149,3 +149,11 @@ nav {
 .size {
   width: 10vw;
 }
+
+.fileblock {
+  display: flex;
+  span {
+    padding: 8px;
+    height: 18px;
+  }
+}
