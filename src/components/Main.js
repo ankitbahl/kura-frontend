@@ -5,9 +5,9 @@ import Modal from 'react-modal';
 import _ from 'lodash';
 import moment from 'moment';
 import { ContextMenu, MenuItem, ContextMenuTrigger } from "react-contextmenu";
-import {uploadURL, getDirectoryKeys, getFile} from '../proto/MetadataFunctions';
+import {uploadURL, getDirectoryKeys, getFile, getFolder, login} from '../proto/MetadataFunctions';
 import Login from "./Login";
-import {getCookie} from "../proto/cookieFunctions";
+import {deleteCookie, getCookie, setCookie} from "../proto/cookieFunctions";
 const customStyles = {
   content : {
     top                   : '50%',
@@ -47,8 +47,19 @@ class Main extends React.Component {
     this.poll();
   }
 
-  login() {
-    this.setState({auth: getCookie('auth')})
+  login(authString, captcha) {
+    login(authString, captcha, (response) => {
+      if (response) {
+        const token = response.token;
+        const expiry = response.expiry;
+        setCookie('auth', token, expiry + 24*3600*1000);
+        this.setState({auth: token})
+      } else {
+        deleteCookie('auth');
+        alert('Login incorrect');
+        document.location.reload();
+      }
+    });
   }
 
   poll = () => {
@@ -61,7 +72,7 @@ class Main extends React.Component {
         );
     }
 
-    setTimeout(this.poll, 1000);
+    setTimeout(this.poll, 10000);
   };
 
   setDirectory = (filepath, obj) => {
@@ -134,7 +145,7 @@ class Main extends React.Component {
       }
     }
 
-
+    this.setState({directory: struct});
     for(let entry of entriesList) {
       if (!entry.isDirectory) {
         const file = entry.path;
@@ -184,12 +195,20 @@ class Main extends React.Component {
 
   downloadFile = (fileName) => {
     let filepath = this.state.root === '' ? fileName : `${this.state.root}/${fileName}`;
-    console.log(filepath);
     let fileURI = getFile(filepath, this.state.auth);
     let link = document.createElement('a');
     link.href = fileURI;
     link.download = fileName;
     link.click();
+  };
+
+  downloadFolder = (fileName) => {
+      let filepath = this.state.root === '' ? fileName : `${this.state.root}/${fileName}`;
+      let folderURI= getFolder(filepath, this.state.auth);
+      let link = document.createElement('a');
+      link.href = folderURI;
+      link.download = fileName;
+      link.click();
   };
 
   uploadFiles = () => {
@@ -292,7 +311,7 @@ class Main extends React.Component {
       return `${Math.floor(size/1000000)} MB`;
     }
 
-    return `${Math.floor(size/1000000000)} GB`;
+    return `${Math.floor(size/100000000)/10} GB`;
   };
 
   formatDate = (time) => {
@@ -339,6 +358,9 @@ class Main extends React.Component {
         this.setState({modalContent: 'rename'});
         this.openModal();
         break;
+      case 'Zip Folder':
+        this.downloadFolder(config.file);
+        break;
       default:
         window.alert('not implemented!');
     }
@@ -356,7 +378,7 @@ class Main extends React.Component {
       })
     }
     const fileOptions = ["Download"];
-    const folderOptions = [];
+    const folderOptions = ["Zip Folder"];
     return Object.keys(rootObject).filter(name => name!=='favourites').map(name => {
       const isFile = rootObject[name].hasOwnProperty('size');
       let options = isFile ? fileOptions : folderOptions;
@@ -486,15 +508,16 @@ class Main extends React.Component {
             <input type="text" id="filename"/>{"    "} <input type="submit"/>
           </form>
         </div>);
+        default:
     }
   };
 
   submitModal = (e) => {
     e.preventDefault();
     const textBox = document.getElementById('filename');
-    let text;
+    // let text;
     if (textBox) {
-      text = textBox.value;
+      // text = textBox.value;
     }
     this.setState({modalIsOpen: false});
   };
@@ -509,7 +532,7 @@ class Main extends React.Component {
             {this.modal()}
         </div>);
     } else {
-      return <Login loginCallback={() => this.login()}/>
+      return <Login loginCallback={(authString, captcha) => this.login(authString, captcha)}/>
     }
   }
 }

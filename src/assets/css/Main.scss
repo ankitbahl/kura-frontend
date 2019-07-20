@@ -17,6 +17,12 @@ body {
   }
 }
 
+.glyphicon{
+  &:hover {
+    cursor: pointer;
+  }
+}
+
 .navbar-inverse {
   background-color: rgb(51, 51, 51) !important;
 }
@@ -111,7 +117,7 @@ table {
 }
 
 main {
-  margin-left: 100px;
+  margin-left: 6vw;
   margin-top: 80px;
   border-radius: 10px;
   padding-top: 10px;
@@ -127,7 +133,7 @@ img {
 
 nav {
   .container {
-    margin-left: 100px;
+    margin-left: 6vw;
   }
 }
 
