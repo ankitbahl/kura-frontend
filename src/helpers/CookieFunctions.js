@@ -16,7 +16,7 @@ export function getCookie(name) {
 
 export function setCookie(name, value, expiry) {
     const d = new Date();
-    d.setTime(expiry);
+    d.setTime(expiry * 1000);
     const expires = "expires="+ d.toUTCString();
     document.cookie = name + "=" + value + ";" + expires + ";path=/";
 }

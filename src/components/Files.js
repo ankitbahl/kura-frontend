@@ -5,9 +5,8 @@ import Modal from 'react-modal';
 import _ from 'lodash';
 import moment from 'moment';
 import { ContextMenu, MenuItem, ContextMenuTrigger } from "react-contextmenu";
-import {uploadURL, getDirectoryKeys, getFile, getFolder, login} from '../proto/MetadataFunctions';
-import Login from "./Login";
-import {deleteCookie, getCookie, setCookie} from "../proto/cookieFunctions";
+import {uploadURL, getDirectoryKeys, getFile, getFolder} from '../backend/FileServer';
+import {getCookie} from "../helpers/CookieFunctions";
 const customStyles = {
   content : {
     top                   : '50%',
@@ -19,7 +18,7 @@ const customStyles = {
   }
 };
 
-class Main extends React.Component {
+class Files extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -36,7 +35,7 @@ class Main extends React.Component {
       modalContent: '', //rename or delete
       modalSelect: '',
       fileSelected: true,
-      auth: getCookie('auth')
+      auth: ''
     };
     this.openModal = this.openModal.bind(this);
     this.afterOpenModal = this.afterOpenModal.bind(this);
@@ -44,35 +43,19 @@ class Main extends React.Component {
   }
 
   componentDidMount() {
-    this.poll();
+    let auth = getCookie('auth');
+    this.setState({ auth });
+    this.poll(auth);
   }
 
-  login(authString, captcha) {
-    login(authString, captcha, (response) => {
-      if (response) {
-        const token = response.token;
-        const expiry = response.expiry;
-        setCookie('auth', token, expiry + 24*3600*1000);
-        this.setState({auth: token})
-      } else {
-        deleteCookie('auth');
-        alert('Login incorrect');
-        document.location.reload();
-      }
-    });
-  }
-
-  poll = () => {
-    if (this.state.auth !== null && this.state.auth !== '') {
-        getDirectoryKeys(this.state.root, this.state.auth,
-            (keysList) => {
-                this.setState(
-                    {directory: this.parseStructure(keysList)})
-            }
-        );
-    }
-
-    setTimeout(this.poll, 10000);
+  poll = (auth) => {
+    //if auth exists
+    getDirectoryKeys(this.state.root, auth,
+        (keysList) => {
+            this.setState(
+                {directory: this.parseStructure(keysList)})
+        }
+    );
   };
 
   setDirectory = (filepath, obj) => {
@@ -85,35 +68,6 @@ class Main extends React.Component {
       _.set(newDirectory, path, obj);
     }
     this.setState({directory: newDirectory});
-  };
-
-  renameKey = (oldPath, newPath) => {
-    let newState = Object.assign({}, this.state.directory);
-    let current = newState;
-    let oldPathArr = oldPath.split('/');
-    let newPathArr = newPath.split('/');
-    let oldKey, newKey;
-    let stringIndex = 0;
-    for(let i = 0; i < oldPathArr.length; ++i) {
-      if (oldPathArr[i] !== newPathArr[i]) {
-        oldKey = oldPathArr[i];
-        newKey = newPathArr[i];
-        break;
-      }
-      current = current[oldPathArr[i]];
-      stringIndex += oldPathArr[i].length + 1;
-    }
-    const modifiedKey = Object.assign({}, current);
-    if(typeof current[oldKey] === 'string') {
-      modifiedKey[newKey] = current[oldKey];
-    } else {
-      modifiedKey[newKey] = Object.assign({}, current[oldKey]);
-    }
-    delete modifiedKey[oldKey];
-
-    let modifyPath = oldPath.substring(0, stringIndex - 1).replace(/\//g,'.');
-    _.set(newState, modifyPath, modifiedKey);
-    this.setState({directory: newState});
   };
 
   unsetDirectory = (filepath) => {
@@ -320,6 +274,12 @@ class Main extends React.Component {
 
   sortOrder = (structure, key1, key2) => {
     const sort = this.state.sortOrder;
+    if (structure[key1].isDirectory) {
+      return sort;
+    }
+    if (structure[key2].isDirectory) {
+      return -sort;
+    }
     switch (this.state.sortCategory) {
       case 'name':
         return key1.toLowerCase() >= key2.toLowerCase()  ? sort : -sort;
@@ -523,18 +483,13 @@ class Main extends React.Component {
   };
 
   render() {
-    if (this.state.auth !== null && this.state.auth !== '') {
-        return (<div>
-            {this.topbar()}
-            {/*{this.sidebar()}*/}
-            {this.filetable()}
-            {this.menus()}
-            {this.modal()}
-        </div>);
-    } else {
-      return <Login loginCallback={(authString, captcha) => this.login(authString, captcha)}/>
-    }
+      return (<div>
+          {this.topbar()}
+          {this.filetable()}
+          {this.menus()}
+          {this.modal()}
+      </div>);
   }
 }
 
-export default Main;
+export default Files;

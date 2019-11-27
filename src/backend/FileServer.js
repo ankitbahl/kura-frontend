@@ -1,4 +1,4 @@
-import {deleteCookie} from "./cookieFunctions";
+import {deleteCookie} from "../helpers/CookieFunctions";
 
 const host = window.localStorage.getItem("metadata") || "https://ankit2bahl.ca:6969";
 export function uploadURL(path, auth) {
@@ -12,9 +12,9 @@ export async function getDirectoryKeys(root, auth, callback) {
         callback(JSON.parse(http.response));
       }
       if (http.readyState === 4 && http.status === 401) {
-        deleteCookie('auth');
+        // deleteCookie('auth');
         alert('Login incorrect');
-        document.location.reload();
+        window.location.replace('/');
       }
   };
   http.open("GET", `${host}/keys?path=${encodeURI(root)}&auth=${encodeURI(auth)}`);
@@ -40,7 +40,8 @@ export async function login(auth, captcha, callback) {
         }
     };
     http.open("POST", `${host}/login`);
-    http.setRequestHeader('auth', auth);
-    http.setRequestHeader('captcha', captcha);
-    http.send(null);
+    http.send(JSON.stringify({
+        auth,
+        captcha
+    }));
 }

@@ -1,30 +1,48 @@
 import React from 'react';
 import ReCAPTCHA from "react-google-recaptcha";
+import {deleteCookie, setCookie} from "../helpers/CookieFunctions";
+import {login} from "../backend/FileServer";
 const recaptchaRef = React.createRef();
 class Login extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            captcha: ''
+            captcha: 'a'
         };
     }
 
     onChange(value) {
         if (value == null) {
             recaptchaRef.reset();
+        } else {
+            this.setState({captcha: value})
         }
-        this.setState({captcha: value})
     }
 
     onExpired(value) {
         console.log(value);
     }
 
-    login() {
+    login(authString, captcha) {
+
+    }
+
+    sendLogin() {
         let user = document.getElementById('username').value;
         let pass = document.getElementById('password').value;
-        let string = `${user}:${pass}`;
-        this.props.loginCallback(string, this.state.captcha);
+        let authString = `${user}:${pass}`;
+        login(authString, this.state.captcha, (response) => {
+            if (response) {
+                const token = response.token;
+                const expiry = response.expiry;
+                setCookie('auth', token, expiry + 24*3600);
+                window.location.replace("/files");
+
+            } else {
+                deleteCookie('auth');
+                alert('Login incorrect');
+            }
+        });
     }
 
     render() {
@@ -41,7 +59,7 @@ class Login extends React.Component {
                 onExpired={() => this.onExpired()}
                 ref={recaptchaRef}
             />
-            <button style={{display: this.state.captcha === '' ? 'none': 'block'}} onClick={() => this.login()}>Login</button>
+            <button style={{display: this.state.captcha === '' ? 'none': 'block'}} onClick={() => this.sendLogin()}>Login</button>
         </div>;
     }
 }
