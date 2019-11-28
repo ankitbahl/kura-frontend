@@ -49,6 +49,7 @@ class Files extends React.Component {
   }
 
   poll = (auth) => {
+
     //if auth exists
     getDirectoryKeys(this.state.root, auth,
         (keysList) => {
@@ -85,7 +86,7 @@ class Files extends React.Component {
   parseStructure = (entriesList) => {
     let struct = Object.assign({}, this.state.directory);
     for(let entry of entriesList) {
-        const file = entry.path;
+      const file = entry.path;
       let path = file.split('/');
       let current = struct;
       for (let key of path) {
@@ -93,23 +94,20 @@ class Files extends React.Component {
           break;
         }
         if(!_.has(current, key)) {
-          current[key] = {};
+          if (!entry.isDirectory && _.last(path) === key) {
+            current[key] = {
+              lastModified: entry.lastModified,
+              size: entry.size
+            }
+          } else {
+            current[key] = {};
+          }
         }
         current = current[key];
       }
     }
 
     this.setState({directory: struct});
-    for(let entry of entriesList) {
-      if (!entry.isDirectory) {
-        const file = entry.path;
-        this.setDirectory(file, {
-            lastModified: entry.lastModified,
-            size: entry.size
-          }
-        )
-      }
-    }
 
     // delete extra keys no longer there
     let rootPath = this.state.root.split('/');
@@ -129,7 +127,6 @@ class Files extends React.Component {
 
   folderClick = (obj) => {
     const root = `${this.state.root}/${obj}`;
-    this.setState({root});
 
     getDirectoryKeys(root, this.state.auth,
       (keysList) => {
@@ -137,6 +134,7 @@ class Files extends React.Component {
         {directory: this.parseStructure(keysList)})
       }
     );
+    this.setState({root});
   };
 
   goBack = () => {

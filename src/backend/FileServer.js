@@ -2,7 +2,7 @@ import {deleteCookie} from "../helpers/CookieFunctions";
 
 const host = window.localStorage.getItem("metadata") || "https://ankit2bahl.ca:6969";
 export function uploadURL(path, auth) {
-  return `${host}/upload?path=${path}&auth=${encodeURI(auth)}`
+  return `${host}/upload?path=${path}&auth=${encodeURIComponent(auth)}`
 }
 
 export async function getDirectoryKeys(root, auth, callback) {
@@ -17,16 +17,16 @@ export async function getDirectoryKeys(root, auth, callback) {
         window.location.replace('/');
       }
   };
-  http.open("GET", `${host}/keys?path=${encodeURI(root)}&auth=${encodeURI(auth)}`);
+  http.open("GET", `${host}/keys?path=${encodeURIComponent(root)}&auth=${encodeURIComponent(auth)}`);
   http.send(null);
 }
 
 export function getFile(filepath, auth) {
-  return `${host}/file?path=${encodeURI(filepath)}&auth=${encodeURI(auth)}`;
+  return `${host}/file?path=${encodeURIComponent(filepath)}&auth=${encodeURIComponent(auth)}`;
 }
 
 export function getFolder(filepath, auth) {
-  return `${host}/folder?path=${encodeURI(filepath)}&auth=${encodeURI(auth)}`;
+  return `${host}/folder?path=${encodeURIComponent(filepath)}&auth=${encodeURIComponent(auth)}`;
 }
 
 export async function login(auth, captcha, callback) {

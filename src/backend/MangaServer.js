@@ -2,7 +2,7 @@ const host = window.localStorage.getItem("metadata") || "https://ankit2bahl.ca:6
 
 export async function search(searchTerm, auth, callback) {
     const http = new XMLHttpRequest();
-    const url = `${host}/manga-names/${encodeURI(searchTerm)}?auth=${encodeURI(auth)}`;
+    const url = `${host}/manga-names/${encodeURIComponent(searchTerm)}?auth=${encodeURIComponent(auth)}`;
     http.open("GET", url);
     http.onload = function(e) {
         if (http.status === 200 && http.readyState === 4) {
@@ -14,7 +14,7 @@ export async function search(searchTerm, auth, callback) {
 
 export async function startJob(manga_url, arg1, arg2, title, auth, callback) {
     const http = new XMLHttpRequest();
-    const url = `${host}/manga?url=${encodeURI(manga_url)}&arg1=${encodeURI(arg1)}&arg2=${encodeURI(arg2)}&name=${encodeURI(title)}&auth=${encodeURI(auth)}`;
+    const url = `${host}/manga?url=${encodeURIComponent(manga_url)}&arg1=${encodeURIComponent(arg1)}&arg2=${encodeURIComponent(arg2)}&name=${encodeURIComponent(title)}&auth=${encodeURIComponent(auth)}`;
     http.open("POST", url);
     http.onload = function(e) {
         if (http.status === 200 && http.readyState === 4) {
@@ -32,7 +32,7 @@ export async function startJob(manga_url, arg1, arg2, title, auth, callback) {
 
 export async function getProgress(auth, progressCallback, completionCallback) {
     let http = new XMLHttpRequest();
-    const url = `${host}/progress?auth=${encodeURI(auth)}`;
+    const url = `${host}/progress?auth=${encodeURIComponent(auth)}`;
     http.open("GET", url);
     http.onload = function(e) {
         if (http.status === 200 && http.readyState === 4) {
@@ -48,5 +48,5 @@ export async function getProgress(auth, progressCallback, completionCallback) {
 }
 
 export function getMangaURL(auth) {
-    return `${host}/manga?auth=${encodeURI(auth)}`;
+    return `${host}/manga?auth=${encodeURIComponent(auth)}`;
 }
