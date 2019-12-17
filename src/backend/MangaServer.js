@@ -1,4 +1,4 @@
-const host = window.localStorage.getItem("metadata") || "https://ankit2bahl.ca:6969";
+const host = window.localStorage.getItem("metadata") || "https://backend.ankit2bahl.ca:6969";
 
 export async function search(searchTerm, auth, callback) {
     const http = new XMLHttpRequest();

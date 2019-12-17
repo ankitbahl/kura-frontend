@@ -1,6 +1,6 @@
 import {deleteCookie} from "../helpers/CookieFunctions";
 
-const host = window.localStorage.getItem("metadata") || "https://ankit2bahl.ca:6969";
+const host = window.localStorage.getItem("metadata") || "https://backend.ankit2bahl.ca:6969";
 export function uploadURL(path, auth) {
   return `${host}/upload?path=${path}&auth=${encodeURIComponent(auth)}`
 }
